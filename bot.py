@@ -1,28 +1,41 @@
 import os
-import telegram
+import time
+import requests
 
-from telegram.ext import Updater, MessageHandler, Filters, CommandHandler
-from igpphd import get_pp_hd_link as pplink
+from constants import *
+from telethon import TelegramClient, events
 
-TELEGRAM_BOT_TOKEN = os.environ.get('TELEGRAM_BOT_TOKEN')
+API_ID = os.environ.get('API_ID', None)
+API_HASH = os.environ.get('API_HASH', None)
+BOT_TOKEN = os.environ.get('BOT_TOKEN', None)
 
-updater = Updater(token=TELEGRAM_BOT_TOKEN, use_context=True)
-dispatcher = updater.dispatcher
+client = TelegramClient(SESSIONS_PATH, API_ID, API_HASH).start(bot_token=BOT_TOKEN)
 
-def start(update, context):
-    chat_id = update.effective_chat.id
-    context.bot.send_message(chat_id=chat_id, text="Hi! I'm a bot that can get Instagram profile picture in HD quality. Just send me an Instagram username (eg. @cpsertan) and I'll send you the HD profile picture link.")
+@client.on(events.NewMessage(pattern='/start'))
+async def start(event):
+    sender = await event.get_sender()
+    await client.send_message(sender.id, WELCOME_MESSAGE)
 
-def get_pp_hd_link(update, context):
-    username = update.message.text.split('@')[1]
-    link = pplink(username)
-    update.message.reply_text(link)
+@client.on(events.NewMessage(pattern=USERNAME_REGEX))
+async def get_profile_picture(event):
+    sender = await event.get_sender()
+    await client.send_message(sender.id, f"Please wait {WAIT_TIME} seconds...")
+    time.sleep(WAIT_TIME)
 
-dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(MessageHandler(Filters.text, get_pp_hd_link))
-updater.start_polling(
-    listen='0.0.0.0',
-    port=int(os.environ.get('PORT', '5000')),
-    url_path=TELEGRAM_BOT_TOKEN,
-    webhook_url= + TELEGRAM_BOT_TOKEN
-)
+    username = event.raw_text.split('@')[1]
+    req = requests.get(f"{BASE_URL}/?username={username}", headers=HEADERS)
+
+    if req.status_code != 200:
+        return await client.send_message(sender.id, f"Error: {req.status_code}")
+
+    try:
+        picture_url = req.json()['data']['user']['profile_pic_url_hd']
+        photo = requests.get(picture_url).content
+        with open(TEMP_PHOTO_PATH, 'wb') as f:
+            f.write(photo)
+        await client.send_file(sender.id, TEMP_PHOTO_PATH)
+    except:
+        await client.send_message(sender.id, 'I received an error, please try again later.')
+
+if __name__ == '__main__':
+    client.run_until_disconnected()

@@ -1,7 +1,4 @@
-FROM python:3.9-slim-buster
-WORKDIR /app
+FROM python:3.9.16-slim-buster
 COPY . .
-RUN pip install -r requirements.txt
-ENV PORT=5000
-EXPOSE $PORT
-CMD ["python", "bot.py"]
+RUN pip3 install -r requirements.txt
+CMD python bot.py
