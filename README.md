@@ -21,7 +21,7 @@ docker run -d \
 -e API_ID=YOUR_API_ID \
 -e API_HASH=YOUR_API_HASH \
 -e BOT_TOKEN=YOUR_BOT_TOKEN \
-scnplt/igpp_telegrambot:v0.0.1
+scnplt/igpp_telegrambot:0.0.2
 ```
 
 ### Step 5.
